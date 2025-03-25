@@ -4,7 +4,7 @@ export interface ProductView {
 	id: string;
 	name: string;
 	imageUrl: string;
-	price: string; // Цена в виде строки для UI
+	price: string;
 }
 
 export const transformProductModelToView = (model: ProductModel): ProductView => ({
