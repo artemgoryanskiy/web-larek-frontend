@@ -21,8 +21,5 @@ export * from './presenter';
 // События
 export * from './events';
 
-// Константы
-export * from './constants';
-
 // Трансформеры
 export * from './transformers';

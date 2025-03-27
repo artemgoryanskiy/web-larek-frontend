@@ -1,9 +1,7 @@
 import { ApiProduct, ApiCartItem, ApiOrder } from './api';
-import {IProduct} from './products';
+import {IProduct, ProductCategory} from './products';
 import {ICartItem, ICartData} from './cart';
 import {IOrderFormData} from './order';
-
-import { ProductCategoryEnum } from './constants';
 
 export class ProductTransformer {
 	/**
@@ -15,7 +13,7 @@ export class ProductTransformer {
 			title: apiProduct.title,
 			description: apiProduct.description,
 			price: apiProduct.price,
-			category: apiProduct.category as ProductCategoryEnum,
+			category: apiProduct.category as ProductCategory,
 			image: apiProduct.image,
 			isInCart: false // По умолчанию товар не в корзине
 		};

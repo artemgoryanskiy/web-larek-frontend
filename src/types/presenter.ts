@@ -1,6 +1,12 @@
 import { IPresenter } from './base';
 import { ICatalogModel, ICartModel, IOrderModel } from './model';
-import { IGalleryView, IProductDetailsView, ICartView, IOrderDeliveryView, IOrderContactsView } from './view';
+import {
+	IGalleryView,
+	IProductDetailsView,
+	ICartView,
+	IOrderDeliveryView,
+	IOrderContactsView,
+} from './view';
 import { IEvents } from './events';
 
 /**

@@ -1,19 +1,10 @@
-import { ProductCategory } from './products';
+import { IProduct } from './products';
 
 export interface ICartItem {
-	product: {
-		id: string;
-		title: string;
-		description: string;
-		price: number;
-		category: ProductCategory;
-		image: string;
-		isInCart: boolean;
-	};
+	product: IProduct;
 	quantity: number;
 	price: number;
 }
-
 
 /**
  * Интерфейс данных корзины

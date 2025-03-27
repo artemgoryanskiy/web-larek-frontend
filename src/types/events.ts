@@ -8,7 +8,10 @@ export interface IEvents {
 	 * @param event Название события или регулярное выражение для фильтрации событий
 	 * @param callback Функция-обработчик события
 	 */
-	on<T extends object>(event: string | RegExp, callback: (data: T) => void): void;
+	on<T extends object>(
+		event: string | RegExp,
+		callback: (data: T) => void
+	): void;
 
 	/**
 	 * Публикация события
@@ -22,5 +25,8 @@ export interface IEvents {
 	 * @param event Название события
 	 * @param context Контекст, который будет добавлен к данным события
 	 */
-	trigger<T extends object>(event: string, context?: Partial<T>): (data: T) => void;
+	trigger<T extends object>(
+		event: string,
+		context?: Partial<T>
+	): (data: T) => void;
 }

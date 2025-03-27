@@ -3,15 +3,18 @@ import { IProduct } from './products';
 import { ICartItem, ICartData } from './cart';
 import { IOrderFormData } from './order';
 import { PaymentMethodType } from './order';
+
 // Базовый интерфейс для работы с DOM
 export interface IElement {
 	getElement(): HTMLElement | null;
+
 	clear(): void;
 }
 
 // Базовый интерфейс представления с обобщенным типом
 export interface IView<T = unknown> {
 	render(data?: T): HTMLElement | null;
+
 	destroy?(): void;
 }
 
@@ -28,6 +31,7 @@ export interface IProductCardView extends IView<IProduct>, IElement {
 // Представление детальной информации о товаре
 export interface IProductDetailsView extends IView<IProduct>, IElement {
 	setButtonState(isInCart: boolean): void;
+
 	productId: string;
 }
 
@@ -37,6 +41,7 @@ export type ICartViewData = Pick<ICartData, 'items' | 'totalPrice'>;
 // Представление корзины
 export interface ICartView extends IView<ICartViewData>, IElement {
 	updateCounter(count: number): void;
+
 	toggleCheckoutButton(isEnabled: boolean): void;
 }
 
@@ -52,15 +57,24 @@ export interface ICartItemView extends IView<ICartItemViewData>, IElement {
 }
 
 // Представления форм заказа
-export interface IOrderDeliveryView extends IView<Partial<IOrderFormData>>, IElement {
+export interface IOrderDeliveryView
+	extends IView<Partial<IOrderFormData>>,
+		IElement {
 	togglePaymentMethod(method: PaymentMethodType): void;
+
 	showAddressError(error: string): void;
+
 	hideErrors(): void;
+
 	toggleNextButton(isEnabled: boolean): void;
 }
 
-export interface IOrderContactsView extends IView<Partial<IOrderFormData>>, IElement {
+export interface IOrderContactsView
+	extends IView<Partial<IOrderFormData>>,
+		IElement {
 	showContactsError(field: string, error: string): void;
+
 	hideErrors(): void;
+
 	toggleSubmitButton(isEnabled: boolean): void;
 }
