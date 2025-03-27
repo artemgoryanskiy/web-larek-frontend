@@ -1,23 +1,28 @@
-// types/index.ts
-export * from './api/responses';
-export * from './api/requests';
-export * from './api/client';
+// Экспортируем все типы и интерфейсы для использования в приложении
 
-export * from './models/base';
-export * from './models/catalog';
-export * from './models/cart';
-export * from './models/order';
+// Базовые интерфейсы
+export * from './base';
 
-export * from './views/base';
-export * from './views/catalog';
-export * from './views/cart';
-export * from './views/order';
+// API интерфейсы
+export * from './api';
 
-export * from './presenters/base';
-export * from './presenters/catalog';
-export * from './presenters/cart';
-export * from './presenters/order';
+// Модели данных
+export * from './model';
+export * from './products';
+export * from './cart';
+export * from './order';
 
+// Представления
+export * from './view';
+
+// Презентеры
+export * from './presenter';
+
+// События
 export * from './events';
-export * from './services';
-export * from './app';
+
+// Константы
+export * from './constants';
+
+// Трансформеры
+export * from './transformers';
