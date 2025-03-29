@@ -16,11 +16,7 @@ export interface IOrderFormData {
 	/** Выбранный способ оплаты */
 	payment: PaymentMethodType;
 	/** Статусы валидации полей */
-	valid: {
-		address: boolean;
-		email: boolean;
-		phone: boolean;
-	};
+	valid: Record<'address' | 'email' | 'phone', boolean>;
 }
 
 /**

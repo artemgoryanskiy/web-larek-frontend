@@ -43,7 +43,7 @@ export interface ApiProduct {
 	/** Описание товара */
 	description: string;
 	/** Цена товара */
-	price: number;
+	price: number | null;
 	/** Категория товара */
 	category: string;
 	/** Ссылка на изображение товара */
@@ -56,8 +56,6 @@ export interface ApiProduct {
 export interface ApiCartItem {
 	/** Идентификатор товара */
 	productId: string;
-	/** Количество товара */
-	quantity: number;
 }
 
 /**
@@ -73,7 +71,7 @@ export interface ApiOrder {
 	/** Телефон покупателя */
 	phone: string;
 	/** Товары в заказе */
-	items: ApiCartItem[];
+	items: string[];
 	/** Общая стоимость заказа */
 	total: number;
 }
