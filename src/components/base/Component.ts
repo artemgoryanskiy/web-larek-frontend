@@ -1,4 +1,4 @@
-import {IEvents} from "./events";
+import { IEvents } from './events';
 
 /**
  * Базовый компонент
@@ -16,10 +16,9 @@ export abstract class Component<T> {
 	}
 
 	// Установить текстовое содержимое
-	protected setText(element: HTMLElement, value: unknown) {
-		if (element) {
-			element.textContent = String(value);
-		}
+	protected setText(element: HTMLElement, value: string | undefined) {
+		if (!value) return;
+		element.textContent = value;
 	}
 
 	// Сменить статус блокировки
@@ -40,14 +39,11 @@ export abstract class Component<T> {
 		element.style.removeProperty('display');
 	}
 
-	// Установить изображение с алтернативным текстом
-	protected setImage(element: HTMLImageElement, src: string, alt?: string) {
-		if (element) {
-			element.src = src;
-			if (alt) {
-				element.alt = alt;
-			}
-		}
+	// Установить изображение с альтернативным текстом
+	protected setImage(imageElement: HTMLImageElement, src: string | undefined, alt?: string) {
+		if(!src) return;
+		imageElement.src = src;
+		imageElement.alt =  alt;
 	}
 
 	// Вернуть корневой DOM-элемент

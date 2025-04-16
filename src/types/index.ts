@@ -1,45 +1,25 @@
-// Экспортируем все типы и интерфейсы для использования в приложении
-
-// Базовые интерфейсы
-import { ProductCategory } from './products';
-
-export * from './base';
-
-// API интерфейсы
-export * from './api';
-
-// Модели данных
-export * from './model';
-export * from './products';
-export * from './cart';
-export * from './order';
-
-// Представления
-export * from './view';
-
-// Презентеры
-export * from './presenter';
-
-// События
-export * from './events';
-
-// Трансформеры
-export * from './transformers';
+/**
+ * Возможные категории товаров
+ */
+export type ProductCategory =
+	| 'другое'
+	| 'софт-скил'
+	| 'хард-скил'
+	| 'кнопка'
+	| 'дополнительное';
 
 export interface IProduct {
-	/** Уникальный идентификатор товара */
 	id: string;
-	/** Название товара */
 	title: string;
-	/** Описание товара */
 	description: string;
-	/** Цена товара */
 	price: number;
-	/** Категория товара */
 	category: ProductCategory;
-	/** Ссылка на изображение товара */
 	image: string;
 }
+
+export type ICatalogItem = Pick<IProduct, 'category' | 'title' | 'image' | 'price'>;
+
+export type IBasketItem = Pick<IProduct, 'title' | 'price'>;
 
 export interface IOrderAddressFormState {
 	/** Выбранный способ оплаты */
@@ -59,7 +39,18 @@ export interface IOrder extends IOrderAddressFormState, IOrderContactFormState {
 	items: string[];
 }
 
+export type FormErrors = Partial<Record<keyof IOrder, string>>;
+
+
 export interface IOrderResult {
 	id: string;
 	total: string;
+}
+
+export interface IAppState {
+	catalog: IProduct[];
+	basket: string[];
+	preview: string | null;
+	order: IOrder | null;
+	loading: boolean;
 }

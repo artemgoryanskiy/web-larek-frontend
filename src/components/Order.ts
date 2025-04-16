@@ -1,4 +1,5 @@
-import { IEvents, IOrder, IOrderAddressFormState, IOrderContactFormState } from '../types';
+import { IOrder, IOrderAddressFormState, IOrderContactFormState } from '../types';
+import { IEvents } from './base/events';
 
 /**
  * Класс для управления данными заказа
@@ -22,7 +23,11 @@ export class Order implements IOrder {
 	/** Состояние кнопки формы */
 	buttonDisabled = true;
 
-	constructor(private events: IEvents) {
+	private _valid: boolean = false;
+	private _errors: string = '';
+
+
+	constructor(private template: HTMLTemplateElement, private events: IEvents) {
 		// Подписываемся на события изменения данных формы
 		this.events.on('orderAddress:submit', this.setAddress.bind(this));
 		this.events.on('orderContact:submit', this.setContact.bind(this));
@@ -90,15 +95,24 @@ export class Order implements IOrder {
 	/**
 	 * Проверяет готовность заказа к оформлению
 	 */
-	isValid(): boolean {
-		return (
-			this.items.length > 0 &&
-			this.paymentMethod !== '' &&
-			this.address !== '' &&
-			this.email !== '' &&
-			this.phone !== ''
-		);
+	set valid(value: boolean) {
+		this._valid = value;
+		this.events.emit('order:validationChange', { valid: value });
 	}
+
+	get valid(): boolean {
+		return this._valid;
+	}
+
+	set errors(value: string) {
+		this._errors = value;
+		this.events.emit('order:errorsChange', { errors: value });
+	}
+
+	get errors(): string {
+		return this._errors;
+	}
+
 
 	/**
 	 * Возвращает количество товаров в заказе
