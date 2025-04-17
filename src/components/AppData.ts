@@ -12,6 +12,7 @@ export class ProductItem extends Model<IProduct> {
 	price: number;
 	category: ProductCategory;
 	image: string;
+	quantity?: number;
 }
 
 export class AppState extends Model<IAppState> {
@@ -21,7 +22,6 @@ export class AppState extends Model<IAppState> {
 	order: IOrder = {
 		payment: '',
 		address: '',
-		buttonDisabled: true,
 		email: '',
 		phone: '',
 		items: []
@@ -49,6 +49,16 @@ export class AppState extends Model<IAppState> {
 
 	// Добавление товара в корзину
 	addToBasket(item: ProductItem): void {
+		const existingItem = this.catalog.find(product => product.id === item.id);
+
+		if (existingItem) {
+			// Если товар уже в корзине, увеличиваем его количество
+			if (existingItem.quantity) {
+				existingItem.quantity++;
+			} else {
+				existingItem.quantity = 1;
+			}
+		}
 		this.order.items.push(item.id);
 		this.emitChanges('basket:changed', { basket: this.order.items });
 	}

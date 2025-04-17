@@ -6,7 +6,7 @@ interface ICardActions {
 	onClick: (event: MouseEvent) => void;
 }
 
-interface IBasketCardActions extends ICardActions {
+interface IBasketCardActions {
 	onRemove: (event: MouseEvent) => void;
 }
 

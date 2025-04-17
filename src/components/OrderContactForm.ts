@@ -1,59 +1,35 @@
-import { Form, IFormState } from './common/Form';
+import { Form } from './common/Form';
 import { IOrderContactFormState } from '../types';
 import { IEvents } from './base/events';
 import { ensureElement } from '../utils/utils';
 
-/**
- * Класс для обработки формы с контактными данными покупателя
- */
 export class OrderContactForm extends Form<IOrderContactFormState> {
-	/** Поле ввода email */
 	private _emailInput: HTMLInputElement;
-	/** Поле ввода телефона */
 	private _phoneInput: HTMLInputElement;
-	/** Кнопка оплаты */
 	private _submitButton: HTMLButtonElement;
-	/** Контейнер для отображения ошибок */
 	private _errorContainer: HTMLElement;
+
+	// Регулярные выражения для валидации
+	private static readonly emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+	private static readonly phoneRegex = /^(\+7|8)[\s-]?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}$/;
 
 	constructor(container: HTMLFormElement, protected events: IEvents) {
 		super(container, events);
 	}
 
 	public init(): void {
-		// Инициализируем поля ввода
-		this._emailInput = ensureElement<HTMLInputElement>(
-			'input[name="email"]',
-			this.container
-		);
+		// Инициализируем все элементы формы
+		this._emailInput = ensureElement<HTMLInputElement>('input[name="email"]', this.container);
+		this._phoneInput = ensureElement<HTMLInputElement>('input[name="phone"]', this.container);
+		this._submitButton = ensureElement<HTMLButtonElement>('.modal__actions .button', this.container);
+		this._errorContainer = ensureElement<HTMLElement>('.form__errors', this.container);
 
-		this._phoneInput = ensureElement<HTMLInputElement>(
-			'input[name="phone"]',
-			this.container
-		);
-
-		// Инициализируем кнопку оплаты
-		this._submitButton = ensureElement<HTMLButtonElement>(
-			'.modal__actions .button',
-			this.container
-		);
-
-		// Создаем контейнер для ошибок, если его нет в разметке
-		this._errorContainer = ensureElement<HTMLElement>(
-			'.form__errors',
-			this.container
-		);
-
-		// Добавляем обработчики событий для полей ввода
-		this._emailInput.addEventListener('input', () => {
-			this._validateForm();
+		// Обработчики ввода для полей email и телефона
+		[this._emailInput, this._phoneInput].forEach(input => {
+			input.addEventListener('input', () => this._validateForm());
 		});
 
-		this._phoneInput.addEventListener('input', () => {
-			this._validateForm();
-		});
-
-		// Добавляем обработчик отправки формы
+		// Обработчик клика по кнопке отправки
 		this._submitButton.addEventListener('click', (e) => {
 			e.preventDefault();
 			if (!this._submitButton.disabled) {
@@ -62,113 +38,72 @@ export class OrderContactForm extends Form<IOrderContactFormState> {
 		});
 	}
 
-	/**
-	 * Проверяет валидность формы и обновляет состояние кнопки
-	 */
+	// Метод валидации формы
 	private _validateForm(): void {
-		// Очищаем сообщение об ошибке
-		this._errorContainer.innerHTML = '';
 		const errors: string[] = [];
+		const email = this._emailInput.value.trim();
+		const phone = this._phoneInput.value.trim();
 
 		// Проверяем email
-		const emailValue = this._emailInput.value.trim();
-		const emailValid = this._validateEmail(emailValue);
-		if (!emailValid && emailValue.length > 0) {
-			errors.push('Некорректный формат Email');
-		} else if (emailValue.length === 0) {
-			errors.push('Email не может быть пустым');
-		}
+		if (!email) errors.push('Email не может быть пустым');
+		else if (!OrderContactForm.emailRegex.test(email)) errors.push('Некорректный формат Email');
 
 		// Проверяем телефон
-		const phoneValue = this._phoneInput.value.trim();
-		const phoneValid = this._validatePhone(phoneValue);
-		if (!phoneValid && phoneValue.length > 0) {
-			errors.push('Некорректный формат телефона');
-		} else if (phoneValue.length === 0) {
-			errors.push('Телефон не может быть пустым');
-		}
+		if (!phone) errors.push('Телефон не может быть пустым');
+		else if (!OrderContactForm.phoneRegex.test(phone)) errors.push('Некорректный формат телефона');
 
-		// Если есть ошибки, отображаем их
-		if (errors.length > 0) {
-			this._errorContainer.innerHTML = errors.map(error => `<p>${error}</p>`).join('');
-			this._submitButton.disabled = true;
-		} else {
-			this._submitButton.disabled = false;
-		}
+		// Переключаем состояние ошибки
+		this._toggleErrorState(errors);
 
-		// Обновляем состояние формы
+		// Обновляем событие и текущее состояние формы
 		this.events.emit('order:formErrors', errors);
+		this.events.emit('orderContact:stateChange', { email, phone, valid: errors.length === 0 });
 	}
 
-	/**
-	 * Валидация email
-	 */
-	private _validateEmail(email: string): boolean {
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		return emailRegex.test(email);
+	// Переключение состояния ошибок и блокировка кнопки
+	private _toggleErrorState(errors: string[]): void {
+		this._errorContainer.innerHTML = errors.map(error => `<p>${error}</p>`).join('');
+		this._submitButton.disabled = errors.length > 0;
 	}
 
-	/**
-	 * Валидация телефона
-	 */
-	private _validatePhone(phone: string): boolean {
-		// Проверка на наличие российского формата телефона
-		const phoneRegex = /^(\+7|8)?[\s\-]?\(?\d{3}\)?[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$/;
-		return phoneRegex.test(phone);
-	}
-
-	/**
-	 * Обрабатывает отправку формы
-	 */
+	// Отправка данных формы
 	private _onSubmit(): void {
-		const formData: IOrderContactFormState = {
-			email: this._emailInput.value,
-			phone: this._phoneInput.value,
-		};
-
-		// Отправляем событие с данными формы
-		this.events.emit('orderContact:submit', formData);
+		this.events.emit('orderContact:submit', {
+			email: this._emailInput.value.trim(),
+			phone: this._phoneInput.value.trim(),
+		});
 	}
 
-	/**
-	 * Устанавливает значение для поля email
-	 */
-	set email(value: string) {
+	// Сброс состояния формы
+	public reset(): void {
+		// Сбрасываем поля формы
+		this._emailInput.value = '';
+		this._phoneInput.value = '';
+
+		// Деактивируем кнопку отправки
+		this._submitButton.disabled = true;
+
+		// Сбрасываем ошибки
+		this._errorContainer.innerHTML = '';
+
+		// Отправляем событие сброса
+		this.events.emit('formReset', { email: '', phone: '', valid: false });
+	}
+
+	public showErrors(errors: string[]): void {
+		this._toggleErrorState(errors);
+		this._validateForm(); // Перепроверка состояния кнопки
+	}
+
+
+	// Сеттеры для email и телефона
+	public set email(value: string) {
 		this._emailInput.value = value;
 		this._validateForm();
 	}
 
-	/**
-	 * Устанавливает значение для поля телефона
-	 */
-	set phone(value: string) {
+	public set phone(value: string) {
 		this._phoneInput.value = value;
 		this._validateForm();
-	}
-	/**
-	 * Отображает форму согласно переданному состоянию
-	 */
-	override render(state: Partial<IOrderContactFormState> & IFormState) {
-		if (state.email !== undefined) {
-			this.email = state.email;
-		}
-
-		if (state.phone !== undefined) {
-			this.phone = state.phone;
-		}
-
-		// Отображаем ошибки, если они есть
-		if (state.errors && state.errors.length > 0) {
-			this._errorContainer.innerHTML = state.errors.map(error => `<p>${error}</p>`).join('');
-		} else {
-			this._errorContainer.innerHTML = '';
-		}
-
-		// Устанавливаем состояние кнопки
-		if (state.valid !== undefined) {
-			this._submitButton.disabled = !state.valid;
-		}
-
-		return super.render(state);
 	}
 }

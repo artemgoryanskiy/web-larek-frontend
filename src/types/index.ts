@@ -15,19 +15,27 @@ export interface IProduct {
 	price: number;
 	category: ProductCategory;
 	image: string;
+	quantity?: number;
 }
 
-export type ICatalogItem = Pick<IProduct, 'category' | 'title' | 'image' | 'price'>;
+export interface ICatalogItem {
+	category: ProductCategory;
+	title: string;
+	image: string;
+	price: number;
+}
 
-export type IBasketItem = Pick<IProduct, 'title' | 'price'>;
+
+export interface IBasketItem {
+	title: string;
+	price: number;
+}
 
 export interface IOrderAddressFormState {
 	/** Выбранный способ оплаты */
 	payment: string;
 	/** Адрес доставки */
 	address: string;
-	/** Состояние кнопки отправки формы */
-	buttonDisabled: boolean;
 }
 
 export interface IOrderContactFormState {
@@ -37,14 +45,15 @@ export interface IOrderContactFormState {
 
 export interface IOrder extends IOrderAddressFormState, IOrderContactFormState {
 	items: string[];
+	total?: number;
 }
 
-export type FormErrors = Partial<Record<keyof IOrder, string>>;
+export type FormErrors = Partial<	Record<keyof IOrder | 'items', string>>;
 
 
 export interface IOrderResult {
 	id: string;
-	total: string;
+	total: number;
 }
 
 export interface IAppState {

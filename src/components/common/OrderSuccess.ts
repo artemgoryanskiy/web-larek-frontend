@@ -32,8 +32,8 @@ export class OrderSuccess extends Component<IOrderSuccessState> {
 		super(container);
 
 		// Находим необходимые элементы в DOM
-		this._title = ensureElement<HTMLElement>('.film__title', this.container);
-		this._description = ensureElement<HTMLElement>('.film__description', this.container);
+		this._title = ensureElement<HTMLElement>('.order-success__title', this.container);
+		this._description = ensureElement<HTMLElement>('.order-success__description', this.container);
 		this._closeButton = ensureElement<HTMLButtonElement>('.order-success__close', this.container);
 		this._closeButton.addEventListener('click', this.actions.onClick);
 	}
