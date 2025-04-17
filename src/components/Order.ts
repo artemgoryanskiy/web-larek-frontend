@@ -12,7 +12,7 @@ export class Order implements IOrder {
 	address = '';
 
 	/** Способ оплаты */
-	paymentMethod = '';
+	payment = '';
 
 	/** Email пользователя */
 	email = '';
@@ -23,8 +23,8 @@ export class Order implements IOrder {
 	/** Состояние кнопки формы */
 	buttonDisabled = true;
 
-	private _valid: boolean = false;
-	private _errors: string = '';
+	private _valid = false;
+	private _errors = '';
 
 
 	constructor(private template: HTMLTemplateElement, private events: IEvents) {
@@ -85,10 +85,10 @@ export class Order implements IOrder {
 	 */
 	setAddress(addressData: IOrderAddressFormState): void {
 		this.address = addressData.address;
-		this.paymentMethod = addressData.paymentMethod;
+		this.payment = addressData.payment;
 		this.events.emit('order:address:changed', {
 			address: this.address,
-			paymentMethod: this.paymentMethod
+			payment: this.payment,
 		});
 	}
 
@@ -128,7 +128,7 @@ export class Order implements IOrder {
 		return {
 			items: this.items,
 			address: this.address,
-			paymentMethod: this.paymentMethod,
+			payment: this.payment,
 			email: this.email,
 			phone: this.phone,
 			buttonDisabled: this.buttonDisabled

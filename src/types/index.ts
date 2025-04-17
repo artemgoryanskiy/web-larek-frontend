@@ -23,7 +23,7 @@ export type IBasketItem = Pick<IProduct, 'title' | 'price'>;
 
 export interface IOrderAddressFormState {
 	/** Выбранный способ оплаты */
-	paymentMethod: string;
+	payment: string;
 	/** Адрес доставки */
 	address: string;
 	/** Состояние кнопки отправки формы */

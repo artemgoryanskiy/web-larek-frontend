@@ -4,145 +4,177 @@ import { IEvents } from "./base/events";
 import { ensureElement } from "../utils/utils";
 
 /**
+ * Типы доступных методов оплаты
+ */
+type PaymentMethod = 'card' | 'cash';
+
+/**
  * Класс для обработки формы с выбором способа оплаты и адресом доставки
  */
 export class OrderAddressForm extends Form<IOrderAddressFormState> {
-	/** Кнопки выбора способа оплаты */
-	private readonly _paymentButtons: HTMLButtonElement[];
-	/** Поле ввода адреса */
+	private _payment: PaymentMethod | '' = '';
+	private _address = '';
+	private readonly _cardButton: HTMLButtonElement;
+	private readonly _cashButton: HTMLButtonElement;
 	private readonly _addressInput: HTMLInputElement;
-	/** Кнопка отправки формы */
 	private readonly _submitButton: HTMLButtonElement;
 
 	constructor(container: HTMLFormElement, protected events: IEvents) {
 		super(container, events);
 
-		// Получаем кнопки выбора способа оплаты
-		this._paymentButtons = Array.from(
-			this.container.querySelectorAll('.order__buttons .button')
-		) as HTMLButtonElement[];
+		// Находим все необходимые элементы формы
+		this._cardButton = container.querySelector('button[name="card"]') as HTMLButtonElement;
+		this._cashButton = container.querySelector('button[name="cash"]') as HTMLButtonElement;
 
-		// Инициализируем поле ввода адреса
-		this._addressInput = ensureElement<HTMLInputElement>(
-			'.form__input[type="text"]',
-			this.container
-		);
+		this._addressInput = container.querySelector(
+			'input[name="address"]'
+		) as HTMLInputElement;
 
-		// Инициализируем кнопку отправки формы
-		this._submitButton = ensureElement<HTMLButtonElement>(
-			'.modal__actions .button',
-			this.container
-		);
+		this._submitButton = container.querySelector(
+			'button[type="submit"]'
+		) as HTMLButtonElement;
+	}
 
-		// Добавляем обработчики событий для кнопок оплаты
-		this._paymentButtons.forEach(button => {
-			button.addEventListener('click', () => {
-				this._selectPaymentMethod(button);
-				this._validateForm();
+	public init(): void {
+		// Добавляем обработчики для кнопок оплаты
+		if (this._cardButton) {
+			this._cardButton.addEventListener('click', (e) => {
+				e.preventDefault();
+				this._selectPaymentMethod('card');
 			});
-		});
+		}
 
-		// Добавляем обработчик ввода адреса
+		if (this._cashButton) {
+			this._cashButton.addEventListener('click', (e) => {
+				e.preventDefault();
+				this._selectPaymentMethod('cash');
+			});
+		}
+
+		// Обработчик для поля ввода адреса
 		this._addressInput.addEventListener('input', () => {
-			this._validateForm();
+			this.address = this._addressInput.value;
 		});
 
-		// Добавляем обработчик отправки формы
-		this._submitButton.addEventListener('click', (e) => {
+		// Обработчик для формы
+		this.container.addEventListener('submit', (e) => {
 			e.preventDefault();
-			if (!this._submitButton.disabled) {
-				this._onSubmit();
+			if (this.valid) {
+				this.events.emit('orderFormSubmit', this.state);
 			}
 		});
 	}
 
-	/**
-	 * Выбирает способ оплаты
-	 */
-	private _selectPaymentMethod(selectedButton: HTMLButtonElement): void {
-		// Снимаем выделение со всех кнопок
-		this._paymentButtons.forEach(button => {
-			button.classList.remove('button_alt-active');
-		});
+	private _selectPaymentMethod(method: PaymentMethod): void {
+		// Сбрасываем выделение обеих кнопок
+		this._cardButton?.classList.remove('button_alt-active');
+		this._cashButton?.classList.remove('button_alt-active');
 
-		// Выделяем выбранную кнопку
-		selectedButton.classList.add('button_alt-active');
-
+		// Выделяем нужную кнопку
+		if (method === 'card' && this._cardButton) {
+			this._cardButton.classList.add('button_alt-active');
+		} else if (method === 'cash' && this._cashButton) {
+			this._cashButton.classList.add('button_alt-active');
+		}
 		// Устанавливаем значение способа оплаты
-		const paymentMethod = selectedButton.textContent?.trim() || '';
-		this._onFieldChange('paymentMethod', paymentMethod);
+		this._payment = method;
+		// Отправляем событие выбора способа оплаты
+		this.events.emit('paymentMethodSelected', { paymentMethod: method });
+		// Обновляем состояние формы
+		this._onFieldChange('payment', method);
+		this._validateForm();
 	}
 
-	/**
-	 * Обрабатывает изменение значения поля формы
-	 */
-	private _onFieldChange(field: keyof IOrderAddressFormState, value: string): void {
-		this.events.emit(`order:${field}:change`, { [field]: value });
-	}
-
-	/**
-	 * Проверяет валидность формы и обновляет состояние кнопки
-	 */
 	private _validateForm(): void {
-		const addressValid = this._addressInput.value.trim() !== '';
-		const paymentMethodValid = this._paymentButtons.some(
-			button => button.classList.contains('button_alt-active')
-		);
+		const isValid = Boolean(this._payment && this._address);
 
-		// Активируем/деактивируем кнопку в зависимости от валидности
-		this._submitButton.disabled = !(addressValid && paymentMethodValid);
+		// Активируем/деактивируем кнопку отправки
+		if (this._submitButton) {
+			this._submitButton.disabled = !isValid;
+		}
+		// Отправляем событие изменения валидности формы
+		this.events.emit('formValidityChanged', { isValid });
 	}
 
-	/**
-	 * Обрабатывает отправку формы
-	 */
-	private _onSubmit(): void {
-		const formData: IOrderAddressFormState = {
-			paymentMethod: this._paymentButtons.find(
-				button => button.classList.contains('button_alt-active')
-			)?.textContent?.trim() || '',
-			address: this._addressInput.value,
-			buttonDisabled: this._submitButton.disabled
+
+	private _onFieldChange(field: string, value: string): void {
+		this.events.emit('formChange', {
+			...this.state,
+			[field]: value
+		});
+	}
+
+	get state(): IOrderAddressFormState {
+		return {
+			payment: this._payment,
+			address: this._address,
+			buttonDisabled: Boolean(this._payment && this._address)
 		};
-
-		// Отправляем событие с данными формы
-		this.events.emit('orderAddress:submit', formData);
 	}
 
-	/**
-	 * Устанавливает значение для поля адреса
-	 */
+	get payment(): PaymentMethod | '' {
+		return this._payment;
+	}
+
+	set payment(value: PaymentMethod | '') {
+		if (!value) return;
+		// Устанавливаем метод оплаты через выделенный метод
+		this._selectPaymentMethod(value as PaymentMethod);
+	}
+
+
+	get address(): string {
+		return this._address;
+	}
+
 	set address(value: string) {
-		this._addressInput.value = value;
+		this._address = value;
+		this._onFieldChange('address', value);
 		this._validateForm();
 	}
 
-	/**
-	 * Устанавливает способ оплаты
-	 */
-	set paymentMethod(value: string) {
-		const button = this._paymentButtons.find(
-			button => button.textContent?.trim() === value
-		);
+	get valid(): boolean {
+		return Boolean(this._payment && this._address);
+	}
 
-		if (button) {
-			this._selectPaymentMethod(button);
+	set valid(value: boolean) {
+		// Обновляем состояние кнопки отправки
+		if (this._submitButton) {
+			this._submitButton.disabled = !value;
 		}
 	}
 
-	/**
-	 * Отображает форму согласно переданному состоянию
-	 */
-	override render(state: Partial<IOrderAddressFormState> & IFormState) {
-		if (state.address !== undefined) {
-			this.address = state.address;
+	// Метод для очистки формы
+	public reset(): void {
+		// Сбрасываем выбор метода оплаты
+		this._payment = '';
+		this._cardButton?.classList.remove('button_alt-active');
+		this._cashButton?.classList.remove('button_alt-active');
+
+		// Сбрасываем адрес
+		this._address = '';
+		if (this._addressInput) {
+			this._addressInput.value = '';
 		}
 
-		if (state.paymentMethod !== undefined) {
-			this.paymentMethod = state.paymentMethod;
-		}
-
+		// Обновляем состояние формы
 		this._validateForm();
-		return super.render(state);
+	}
+
+
+	// Метод для отображения ошибок формы
+	public showErrors(errors: Record<string, string>): void {
+		const errorContainer = this.container.querySelector('.form__errors');
+		if (errorContainer) {
+			errorContainer.textContent = Object.values(errors).join(', ');
+		}
+	}
+
+	// Метод для скрытия ошибок формы
+	public clearErrors(): void {
+		const errorContainer = this.container.querySelector('.form__errors');
+		if (errorContainer) {
+			errorContainer.textContent = '';
+		}
 	}
 }

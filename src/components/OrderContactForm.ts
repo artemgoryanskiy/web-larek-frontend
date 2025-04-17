@@ -8,25 +8,27 @@ import { ensureElement } from '../utils/utils';
  */
 export class OrderContactForm extends Form<IOrderContactFormState> {
 	/** Поле ввода email */
-	private readonly _emailInput: HTMLInputElement;
+	private _emailInput: HTMLInputElement;
 	/** Поле ввода телефона */
-	private readonly _phoneInput: HTMLInputElement;
+	private _phoneInput: HTMLInputElement;
 	/** Кнопка оплаты */
-	private readonly _submitButton: HTMLButtonElement;
+	private _submitButton: HTMLButtonElement;
 	/** Контейнер для отображения ошибок */
-	private readonly _errorContainer: HTMLElement;
+	private _errorContainer: HTMLElement;
 
 	constructor(container: HTMLFormElement, protected events: IEvents) {
 		super(container, events);
+	}
 
+	public init(): void {
 		// Инициализируем поля ввода
 		this._emailInput = ensureElement<HTMLInputElement>(
-			'.form__input[placeholder="Введите Email"]',
+			'input[name="email"]',
 			this.container
 		);
 
 		this._phoneInput = ensureElement<HTMLInputElement>(
-			'.form__input[placeholder="+7 ("]',
+			'input[name="phone"]',
 			this.container
 		);
 
@@ -37,16 +39,10 @@ export class OrderContactForm extends Form<IOrderContactFormState> {
 		);
 
 		// Создаем контейнер для ошибок, если его нет в разметке
-		if (!this.container.querySelector('.form__errors')) {
-			this._errorContainer = document.createElement('div');
-			this._errorContainer.className = 'form__errors';
-			this.container.querySelector('.order')?.appendChild(this._errorContainer);
-		} else {
-			this._errorContainer = ensureElement<HTMLElement>(
-				'.form__errors',
-				this.container
-			);
-		}
+		this._errorContainer = ensureElement<HTMLElement>(
+			'.form__errors',
+			this.container
+		);
 
 		// Добавляем обработчики событий для полей ввода
 		this._emailInput.addEventListener('input', () => {
@@ -127,7 +123,7 @@ export class OrderContactForm extends Form<IOrderContactFormState> {
 	private _onSubmit(): void {
 		const formData: IOrderContactFormState = {
 			email: this._emailInput.value,
-			phone: this._phoneInput.value
+			phone: this._phoneInput.value,
 		};
 
 		// Отправляем событие с данными формы
@@ -149,7 +145,6 @@ export class OrderContactForm extends Form<IOrderContactFormState> {
 		this._phoneInput.value = value;
 		this._validateForm();
 	}
-
 	/**
 	 * Отображает форму согласно переданному состоянию
 	 */

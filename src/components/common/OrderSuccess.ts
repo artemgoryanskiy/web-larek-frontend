@@ -1,5 +1,5 @@
 import { Component } from "../base/Component";
-import { ensureElement, formatNumber } from "../../utils/utils";
+import { ensureElement } from "../../utils/utils";
 
 /**
  * Интерфейс для состояния компонента успешного заказа

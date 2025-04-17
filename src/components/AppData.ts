@@ -19,7 +19,7 @@ export class AppState extends Model<IAppState> {
 	catalog: IProduct[];
 	loading: boolean;
 	order: IOrder = {
-		paymentMethod: '',
+		payment: '',
 		address: '',
 		buttonDisabled: true,
 		email: '',
@@ -41,16 +41,41 @@ export class AppState extends Model<IAppState> {
 	}
 
 	// Переключение статуса заказа
-	toggleOrderedLot(id: string, isIncluded: boolean) {
+	toggleOrderedProduct(id: string, isIncluded: boolean) {
 		this.order.items = isIncluded
 			? this.addUniqueItem(this.order.items, id)
 			: this.removeItem(this.order.items, id);
+	}
+
+	// Добавление товара в корзину
+	addToBasket(item: ProductItem): void {
+		this.order.items.push(item.id);
+		this.emitChanges('basket:changed', { basket: this.order.items });
+	}
+
+
+	removeFromBasket(id: string) {
+		this.order.items = this.removeItem(this.order.items, id);
+		this.emitChanges('basket:changed', { basket: this.order.items });
+	}
+
+	getBasketItems(): ProductItem[] {
+		return this.order.items
+			.map(id => this.catalog.find(item => item.id === id))
+			.filter(item => item !== undefined) as ProductItem[];
 	}
 
 	// Очистка корзины
 	clearBasket() {
 		this.order.items = [];
 	}
+
+	isInBasket(itemId: string): boolean {
+		return Boolean(this.order.items.find(id => id === itemId));
+	}
+
+
+
 
 	// Общая сумма заказанных товаров
 	getTotal() {
