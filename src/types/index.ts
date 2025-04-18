@@ -25,7 +25,6 @@ export interface ICatalogItem {
 	price: number;
 }
 
-
 export interface IBasketItem {
 	title: string;
 	price: number;

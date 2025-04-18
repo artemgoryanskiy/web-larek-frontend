@@ -6,7 +6,7 @@ import { ensureElement } from '../utils/utils';
 /**
  * Типы доступных методов оплаты
  */
-type PaymentMethod = 'card' | 'cash';
+export type PaymentMethod = 'card' | 'cash';
 
 /**
  * Класс для обработки формы с выбором способа оплаты и адресом доставки

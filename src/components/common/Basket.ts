@@ -2,89 +2,123 @@ import { Component } from '../base/Component';
 import { createElement, ensureElement, formatNumber } from '../../utils/utils';
 import { EventEmitter } from '../base/events';
 
+/**
+ * @interface IBasketView
+ * @description Интерфейс, описывающий состояние представления корзины
+ */
 interface IBasketView {
-	items: HTMLElement[];
-	total: number;
-	selected?: string[]; // Сделали необязательным
+  /** Массив HTML-элементов товаров в корзине */
+  items: HTMLElement[];
+  /** Общая сумма товаров в корзине */
+  total: number;
+  /** Необязательный массив идентификаторов выбранных товаров */
+  selected?: string[];
 }
 
+/**
+ * @class Basket
+ * @extends Component<IBasketView>
+ * @description Класс для управления представлением корзины товаров
+ */
 export class Basket extends Component<IBasketView> {
-	private _list: HTMLElement;
-	private readonly _total: HTMLElement | null;
-	private readonly _button: HTMLElement | null;
+  /**
+   * Контейнер для списка товаров в корзине
+   * @private
+   */
+  private _list: HTMLElement;
+  
+  /**
+   * Элемент для отображения общей суммы заказа
+   * @private
+   * @readonly
+   */
+  private readonly _total: HTMLElement | null;
+  
+  /**
+   * Кнопка оформления заказа
+   * @private
+   * @readonly
+   */
+  private readonly _button: HTMLElement | null;
 
-	constructor(container: HTMLElement, protected events: EventEmitter) {
-		super(container);
+  /**
+   * @constructor
+   * @param {HTMLElement} container - Корневой элемент компонента корзины
+   * @param {EventEmitter} events - Эмиттер событий для коммуникации с другими компонентами
+   */
+  constructor(container: HTMLElement, protected events: EventEmitter) {
+    super(container);
 
-		// Инициализация элементов корзины
-		this._list = ensureElement<HTMLElement>('.basket__list', this.container);
-		this._total = this.container.querySelector('.basket__price');
-		this._button = this.container.querySelector('.basket__button');
+    // Инициализация элементов корзины
+    this._list = ensureElement<HTMLElement>('.basket__list', this.container);
+    this._total = this.container.querySelector('.basket__price');
+    this._button = this.container.querySelector('.basket__button');
 
-		// Привязка события к кнопке оформления заказа
-		this._button?.addEventListener('click', this.handleOrderOpen);
+    // Привязка события к кнопке оформления заказа
+    this._button?.addEventListener('click', this.handleOrderOpen);
 
-		// Устанавливаем начальное состояние
-		this.items = [];
-	}
+    // Устанавливаем начальное состояние
+    this.clear();
+  }
 
-	/**
-	 * Открытие формы оформления заказа
-	 */
-	private handleOrderOpen = (): void => {
-		this.events.emit('order:open');
-	};
+  /**
+   * Обработчик клика по кнопке оформления заказа
+   * @private
+   * @fires Basket#order:open - Событие открытия формы оформления заказа
+   */
+  private handleOrderOpen = (): void => {
+    this.events.emit('order:open');
+  };
 
-	/**
-	 * Установка списка элементов корзины
-	 * @param items - массив HTML-элементов
-	 */
-	set items(items: HTMLElement[]) {
-		if (items.length > 0) {
-			this._renderItems(items);
-		} else {
-			this._renderEmptyState();
-		}
-	}
+  /**
+   * Устанавливает элементы корзины и обновляет отображение
+   * @param {HTMLElement[]} items - Массив HTML-элементов товаров для отображения в корзине
+   */
+  set items(items: HTMLElement[]) {
+    if (items.length > 0) {
+      this._renderItems(items);
+      this.setDisabled(this._button, false);
+    } else {
+      this.clear();
+    }
+  }
 
-	/**
-	 * Установка доступности кнопки оформления заказа
-	 * @param items - массив выбранных товаров
-	 */
-	set selected(items: string[]) {
-		this.setDisabled(this._button, items.length === 0);
-	}
+  /**
+   * Отображает список товаров в корзине
+   * @private
+   * @param {HTMLElement[]} items - Массив HTML-элементов товаров
+   */
+  private _renderItems(items: HTMLElement[]): void {
+    this._list.replaceChildren(...items);
+  }
 
-	/**
-	 * Установка общей суммы корзины
-	 * @param total - итоговая сумма
-	 */
-	set total(total: number) {
-		this.setText(this._total, formatNumber(total));
-	}
+  /**
+   * Очищает корзину и устанавливает пустое состояние
+   * @private
+   */
+  private clear(): void {
+    this._renderEmptyState();
+    this.setDisabled(this._button, true);
+    this.setText(this._total, formatNumber(0));
+  }
 
-	/**
-	 * Рендер содержимого корзины
-	 * @param items - массив HTML-элементов товаров
-	 */
-	private _renderItems(items: HTMLElement[]): void {
-		this._list.replaceChildren(...items);
-	}
+  /**
+   * Отображает состояние пустой корзины
+   * @private
+   */
+  private _renderEmptyState(): void {
+    this._list.replaceChildren(
+      createElement<HTMLParagraphElement>('p', {
+        textContent: 'Корзина пуста',
+      })
+    );
+  }
 
-	/**
-	 * Рендер пустого состояния корзины
-	 */
-	private _renderEmptyState(): void {
-		this._list.replaceChildren(
-			createElement<HTMLParagraphElement>('p', {
-				textContent: 'Корзина пуста',
-			})
-		);
-	}
-
-	public reset(): void {
-		this.items = [];
-		this.container.innerHTML = ''; // Очищаем HTML корзины
-	}
-
+  /**
+   * Сбрасывает состояние корзины в начальное (пустое)
+   * @public
+   */
+  public reset(): void {
+    this.clear();
+  }
 }
