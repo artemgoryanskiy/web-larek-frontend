@@ -61,18 +61,6 @@ export class AppState extends Model<IAppState> {
 	formErrors: FormErrors = {};
 
 	/**
-	 * Добавляет уникальный элемент в массив, если его там еще нет
-	 * 
-	 * @param {string[]} items - Исходный массив идентификаторов
-	 * @param {string} id - Идентификатор для добавления
-	 * @returns {string[]} Новый массив с добавленным элементом (если он не был уже в массиве)
-	 * @private
-	 */
-	private addUniqueItem(items: string[], id: string): string[] {
-		return items.includes(id) ? items : [...items, id];
-	}
-
-	/**
 	 * Удаляет элемент из массива
 	 * 
 	 * @param {string[]} items - Исходный массив идентификаторов
