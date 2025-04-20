@@ -275,9 +275,6 @@ function handleOrderAddressSubmit(formData: IOrderAddressFormState): void {
 	}
 }
 
-
-
-
 /**
  * Валидирует данные формы контактов
  * @param {IOrderContactFormState} formData - Данные формы для проверки

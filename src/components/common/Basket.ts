@@ -84,6 +84,22 @@ export class Basket extends Component<IBasketView> {
   }
 
   /**
+   * Отображает корзину с товарами и общей суммой
+   * @param {IBasketView} state - Данные для отображения в корзине
+   * @returns {HTMLElement} Элемент корзины
+   */
+  render(state: IBasketView): HTMLElement {
+    if (state.items.length > 0) {
+      this._renderItems(state.items);
+      this.setText(this._total, formatNumber(state.total));
+      this.setDisabled(this._button, false);
+    } else {
+      this.clear();
+    }
+    return this.container;
+  }
+
+  /**
    * Отображает список товаров в корзине
    * @private
    * @param {HTMLElement[]} items - Массив HTML-элементов товаров
