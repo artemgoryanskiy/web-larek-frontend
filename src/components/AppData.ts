@@ -1,195 +1,344 @@
-import { FormErrors, IAppState, IOrder, IProduct, ProductCategory } from '../types';
 import { Model } from './base/Model';
+import { IEvents } from './base/events';
 
 /**
- * @typedef {Object} CatalogChangeEvent
- * @description Событие изменения каталога товаров
- * @property {IProduct[]} catalog - Обновленный список товаров каталога
+ * Тип, описывающий элемент каталога товаров.
  */
-export type CatalogChangeEvent = {
-	catalog: IProduct[];
+export type ProductItem = {
+    id: string;
+    title: string;
+    description: string;
+    image: string;
+    price: number;
+    category: string;
 };
 
 /**
- * @class ProductItem
- * @extends Model<IProduct>
- * @description Модель представления товара с расширенной функциональностью
+ * Тип, описывающий заказ товара.
  */
-export class ProductItem extends Model<IProduct> {
-	/** Уникальный идентификатор товара */
-	id: string;
-	
-	/** Название товара */
-	title: string;
-	
-	/** Описание товара */
-	description: string;
-	
-	/** Цена товара */
-	price: number;
-	
-	/** Категория товара */
-	category: ProductCategory;
-	
-	/** URL изображения товара */
-	image: string;
-}
+export type OrderData = {
+    payment: string;
+    address: string;
+    email: string;
+    phone: string;
+    items: string[];
+    total?: number;
+};
 
 /**
- * @class AppState
- * @extends Model<IAppState>
- * @description Главная модель состояния приложения, управляющая каталогом,
- * корзиной и процессом оформления заказа
+ * Тип, возвращаемый методом setCatalog.
  */
-export class AppState extends Model<IAppState> {
-	/** Идентификаторы товаров в корзине */
-	basket: string[];
-	
-	/** Каталог доступных товаров */
-	catalog: IProduct[];
-	
-	/** Информация о текущем заказе */
-	order: IOrder = {
-		payment: '',
-		address: '',
-		email: '',
-		phone: '',
-		items: []
-	};
+export type CatalogChangeEvent = {
+    catalog: ProductItem[];
+};
 
-	/** Ошибки валидации формы заказа */
-	formErrors: FormErrors = {};
+/**
+ * Класс, представляющий состояние приложения.
+ * Управляет каталогом товаров, корзиной и заказом.
+ */
+export class AppState extends Model<{
+    catalog: ProductItem[];
+    basket: string[];
+    order: Partial<OrderData>;
+    formErrors: Record<string, string>;
+}> {
+    // Прямые свойства класса вместо методов get/set
+    catalog: ProductItem[] = [];
+    basket: string[] = [];
+    order: Partial<OrderData> = {
+        payment: '',
+        address: '',
+        email: '',
+        phone: '',
+        items: []
+    };
+    formErrors: Record<string, string> = {};
 
-	/**
-	 * Удаляет элемент из массива
-	 * 
-	 * @param {string[]} items - Исходный массив идентификаторов
-	 * @param {string} id - Идентификатор для удаления
-	 * @returns {string[]} Новый массив без указанного элемента
-	 * @private
-	 */
-	private removeItem(items: string[], id: string): string[] {
-		return items.filter(item => item !== id);
-	}
+    constructor(data: Partial<{
+        catalog: ProductItem[];
+        basket: string[];
+        order: Partial<OrderData>;
+        formErrors: Record<string, string>;
+    }>, events: IEvents) {
+        // Инициализируем дефолтные значения
+        const defaults: {
+            catalog: ProductItem[];
+            basket: string[];
+            order: Partial<OrderData>;
+            formErrors: Record<string, string>;
+        } = {
+            catalog: [],
+            basket: [],
+            order: {
+                payment: '',
+                address: '',
+                email: '',
+                phone: '',
+                items: [] as string[] // явно указываем тип
+            },
+            formErrors: {}
+        };
+        
+        // Вызываем родительский конструктор с merged данными
+        super(Object.assign({}, defaults, data), events);
+        
+        // Убедимся, что свойства заполнены значениями
+        this.catalog = this.catalog || [];
+        this.basket = this.basket || [];
+        this.order = this.order || defaults.order;
+        this.formErrors = this.formErrors || {};
+        
+        // Подписываемся на события изменения полей заказа
+        this.events.on('orderAddress.payment:change', this.handleOrderFieldChange.bind(this));
+        this.events.on('orderAddress.address:change', this.handleOrderFieldChange.bind(this));
+        this.events.on('orderContact.email:change', this.handleOrderFieldChange.bind(this));
+        this.events.on('orderContact.phone:change', this.handleOrderFieldChange.bind(this));
+    }
+    
+    /**
+     * Обрабатывает изменения полей заказа
+     * @param {object} data - Данные об измененном поле
+     * @private
+     */
+    private handleOrderFieldChange(data: { field: keyof OrderData; value: string }): void {
+        if (data && data.field && data.value !== undefined) {
+            this.setOrderField(data.field, data.value);
+            
+            // Валидируем данные в зависимости от типа поля
+            if (data.field === 'payment' || data.field === 'address') {
+                this.validateOrderAddress();
+            } else if (data.field === 'email' || data.field === 'phone') {
+                this.validateOrderContact();
+            }
+        }
+    }
 
-	/**
-	 * Добавляет товар в корзину
-	 * 
-	 * @param {ProductItem} item - Товар для добавления в корзину
-	 */
-	addToBasket(item: ProductItem): void {
-		this.order.items.push(item.id);
-		this.emitChanges('basket:changed', { basket: this.order.items });
-	}
+    /**
+     * Устанавливает каталог товаров.
+     * @param {ProductItem[]} items - Список товаров для каталога
+     */
+    setCatalog(items: ProductItem[]): void {
+        this.catalog = items || [];
+        this.emitChanges('items:changed', { catalog: this.catalog });
+    }
 
-	/**
-	 * Удаляет товар из корзины
-	 * 
-	 * @param {string} id - Идентификатор товара для удаления
-	 */
-	removeFromBasket(id: string): void {
-		this.order.items = this.removeItem(this.order.items, id);
-		this.emitChanges('basket:changed', { basket: this.order.items });
-	}
+    /**
+     * Возвращает товар по идентификатору.
+     * @param {string} id - Идентификатор товара
+     * @returns {ProductItem | undefined} Найденный товар или undefined
+     */
+    getProductById(id: string): ProductItem | undefined {
+        return (this.catalog || []).find(item => item.id === id);
+    }
 
-	/**
-	 * Получает список товаров в корзине
-	 * 
-	 * @returns {ProductItem[]} Массив товаров в корзине
-	 */
-	getBasketItems(): ProductItem[] {
-		return this.order.items
-			.map(id => this.catalog.find(item => item.id === id))
-			.filter(Boolean) as ProductItem[];
-	}
+    /**
+     * Проверяет, находится ли товар в корзине.
+     * @param {string} id - Идентификатор товара
+     * @returns {boolean} true, если товар в корзине
+     */
+    isInBasket(id: string): boolean {
+        try {
+            // Получаем корзину с защитой от undefined
+            const currentBasket = this.basket || [];
+            // Проверяем наличие id в корзине
+            return Array.isArray(currentBasket) && currentBasket.includes(id);
+        } catch (error) {
+            console.error('Ошибка при проверке товара в корзине:', error);
+            return false;
+        }
+    }
 
-	/**
-	 * Очищает корзину
-	 */
-	clearBasket(): void {
-		this.order.items = [];
-	}
+    /**
+     * Добавляет товар в корзину.
+     * @param {ProductItem} item - Товар для добавления
+     */
+    addToBasket(item: ProductItem): void {
+        try {
+            const currentBasket = this.basket || [];
+            if (!this.isInBasket(item.id)) {
+                this.basket = [...currentBasket, item.id];
+            }
+        } catch (error) {
+            console.error('Ошибка при добавлении товара в корзину:', error);
+            // Инициализируем корзину с текущим товаром в случае ошибки
+            this.basket = [item.id];
+        }
+    }
 
-	/**
-	 * Проверяет, находится ли товар в корзине
-	 * 
-	 * @param {string} itemId - Идентификатор товара для проверки
-	 * @returns {boolean} true, если товар в корзине
-	 */
-	isInBasket(itemId: string): boolean {
-		return this.order.items.includes(itemId);
-	}
+    /**
+     * Удаляет товар из корзины.
+     * @param {string} id - Идентификатор товара для удаления
+     */
+    removeFromBasket(id: string): void {
+        try {
+            const currentBasket = this.basket || [];
+            this.basket = currentBasket.filter(item => item !== id);
+        } catch (error) {
+            console.error('Ошибка при удалении товара из корзины:', error);
+            this.basket = [];
+        }
+    }
 
-	/**
-	 * Вычисляет общую сумму товаров в корзине
-	 * 
-	 * @returns {number} Общая стоимость товаров в корзине
-	 */
-	getTotal(): number {
-		return this.order.items.reduce((total, itemId) => {
-			const item = this.catalog.find(it => it.id === itemId);
-			return item ? total + item.price : total;
-		}, 0);
-	}
+    /**
+     * Очищает корзину.
+     */
+    clearBasket(): void {
+        this.basket = [];
+    }
 
-	/**
-	 * Устанавливает каталог товаров
-	 * 
-	 * @param {IProduct[]} items - Массив товаров для каталога
-	 */
-	setCatalog(items: IProduct[]): void {
-		this.catalog = items.map(item => new ProductItem(item, this.events));
-		this.emitChanges('items:changed', { catalog: this.catalog });
-	}
+    /**
+     * Возвращает товары из корзины с полной информацией.
+     * @returns {ProductItem[]} Список товаров в корзине
+     */
+    getBasketItems(): ProductItem[] {
+        try {
+            const currentBasket = this.basket || [];
+            return currentBasket
+                .map(id => this.getProductById(id))
+                .filter((item): item is ProductItem => item !== undefined);
+        } catch (error) {
+            console.error('Ошибка при получении товаров корзины:', error);
+            return [];
+        }
+    }
 
-	/**
-	 * Валидирует обязательное поле и добавляет ошибку, если поле пустое
-	 * 
-	 * @param {keyof IOrder} field - Ключ поля для валидации
-	 * @param {string} errorMessage - Сообщение об ошибке
-	 * @private
-	 */
-	private validateRequiredField(field: keyof IOrder, errorMessage: string): void {
-		if (!this.order[field]) {
-			this.formErrors[field] = errorMessage;
+    /**
+     * Вычисляет общую стоимость товаров в корзине.
+     * @returns {number} Общая стоимость
+     */
+    getTotal(): number {
+        try {
+            return this.getBasketItems().reduce((total, item) => total + item.price, 0);
+        } catch (error) {
+            console.error('Ошибка при расчете общей стоимости:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Устанавливает конкретное поле заказа.
+     * @param {keyof OrderData} field - Название поля
+     * @param {string} value - Новое значение
+     */
+    setOrderField(field: keyof OrderData, value: string): void {
+        // Создаем новый объект, чтобы не мутировать исходный
+        this.order = { 
+            ...this.order, 
+            [field]: value 
+        };
 		}
-	}
 
-	/**
-	 * Валидирует поля заказа
-	 * 
-	 * @returns {boolean} true, если заказ валиден (нет ошибок)
-	 */
-	validateOrder(): boolean {
-		this.formErrors = {}; // Сброс ошибок перед валидацией
-		
-		this.validateRequiredField('email', 'Необходимо указать email');
-		this.validateRequiredField('phone', 'Необходимо указать телефон');
-		
-		this.events.emit('formErrors:change', this.formErrors);
-		return Object.keys(this.formErrors).length === 0;
-	}
+    validateOrderAddress(): boolean {
+        const errors: Record<string, string> = {};
+        const currentOrder = this.order || {};
+        
+        // Проверка адреса
+        if (!currentOrder.address || currentOrder.address.trim().length < 5) {
+            errors.address = 'Адрес должен содержать не менее 5 символов';
+            console.log('Ошибка валидации адреса:', currentOrder.address);
+        }
+        
+        // Проверка способа оплаты
+        if (!currentOrder.payment || !['card', 'cash'].includes(currentOrder.payment)) {
+            errors.payment = 'Выберите способ оплаты';
+            console.log('Ошибка валидации оплаты:', currentOrder.payment);
+        }
+        
+        // Сохраняем ошибки в состоянии
+        this.formErrors = errors;
+        
+        // Проверяем наличие ошибок
+        const isValid = Object.keys(errors).length === 0;
+        
+        // Отправляем событие о результатах валидации с явным указанием состояния валидности
+        this.events.emit('orderAddress:validation', {
+            valid: isValid,
+            errors: Object.values(errors)
+        });
+        
+        // Дополнительно отправим событие
+        this.events.emit('orderAddress:validationErrors', {
+            valid: isValid,
+            errors: Object.values(errors)
+        });
 
-	/**
-	 * Отправляет событие готовности заказа, если он валиден
-	 * 
-	 * @private
-	 */
-	private emitOrderReadyIfValid(): void {
-		if (this.validateOrder()) {
-			this.events.emit('order:ready', this.order);
+        return isValid;
+    }
+
+    /**
+     * Валидирует форму контактных данных.
+     * @returns {boolean} true, если форма валидна
+     */
+    validateOrderContact(): boolean {
+        const errors: Record<string, string> = {};
+        const currentOrder = this.order || {};
+        
+        // Регулярное выражение для проверки email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        // Проверка email
+        if (!currentOrder.email || !emailRegex.test(currentOrder.email)) {
+            errors.email = 'Укажите корректный email';
+        }
+        
+        // Проверка телефона
+        if (!currentOrder.phone || currentOrder.phone.trim().length < 10) {
+            errors.phone = 'Укажите корректный номер телефона (не менее 10 символов)';
+        }
+        
+        // Сохраняем ошибки в состоянии
+        this.formErrors = errors;
+        
+        // Проверяем наличие ошибок
+        const isValid = Object.keys(errors).length === 0;
+        
+        // Отправляем событие о результатах валидации
+        this.events.emit('orderContact:validationResult', {
+            valid: isValid,
+            errors: Object.values(errors)
+        });
+        
+        return isValid;
+    }
+
+    /**
+     * Валидирует полный заказ перед отправкой.
+     * @returns {boolean} true, если заказ валиден
+     */
+    validateOrder(): boolean {
+        const addressValid = this.validateOrderAddress();
+        const contactValid = this.validateOrderContact();
+        
+        // Проверяем наличие товаров в корзине
+        const currentBasket = this.basket || [];
+        if (currentBasket.length === 0) {
+            this.formErrors = { 
+                ...this.formErrors, 
+                items: 'Корзина пуста' 
+            };
+            return false;
+        }
+        
+        return addressValid && contactValid;
+    }
+
+    /**
+     * Сбрасывает данные заказа после успешного оформления.
+     * Очищает все поля заказа и устанавливает их в начальное состояние.
+     */
+    resetOrder(): void {
+        this.order = {
+            payment: '',
+            address: '',
+            email: '',
+            phone: '',
+            items: []
+        };
+        
+        // Очищаем ошибки форм
+        this.formErrors = {};
+        
+        // Отправляем событие о сбросе заказа
+        this.events.emit('order:reset', { order: this.order });
 		}
-	}
-
-	/**
-	 * Устанавливает значение поля заказа и проверяет готовность заказа
-	 * 
-	 * @param {K} field - Ключ поля заказа
-	 * @param {IOrder[K]} value - Значение для установки
-	 * @template K - Тип ключа заказа
-	 */
-	setOrderField<K extends keyof IOrder>(field: K, value: IOrder[K]): void {
-		this.order[field] = value;
-		this.emitOrderReadyIfValid();
-	}
 }

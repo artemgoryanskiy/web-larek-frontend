@@ -93,7 +93,7 @@ export class BaseCard extends Component<ICard> {
    * @param {number|null} value - Цена товара или null
    */
   set price(value: number | null) {
-    this.setText(this._price, value === null ? '' : `${value} ₽`);
+    this.setText(this._price, value === null ? 'бесценно' : `${value} синапсов`);
   }
 
   /**
@@ -320,7 +320,7 @@ export class BasketCard extends BaseCard {
    * @override
    */
   set price(value: number | null) {
-    this.setText(this._price, value === null ? '' : `${value} синапсов`);
+    this.setText(this._price, value === null ? 'бесценно' : `${value} синапсов`);
   }
 
   /**

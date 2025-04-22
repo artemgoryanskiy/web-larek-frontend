@@ -1,11 +1,11 @@
-import { Form } from './common/Form';
+import { Form, IFormState } from './common/Form';
 import { IOrderContactFormState } from '../types';
 import { IEvents } from './base/events';
 import { ensureElement } from '../utils/utils';
 
 /**
  * Класс для работы с формой контактных данных заказа.
- * Управляет вводом и валидацией email и телефона пользователя.
+ * Управляет вводом email и телефона пользователя.
  */
 export class OrderContactForm extends Form<IOrderContactFormState> {
 	/** Поле для ввода email */
@@ -14,20 +14,11 @@ export class OrderContactForm extends Form<IOrderContactFormState> {
 	/** Поле для ввода телефона */
 	private _phoneInput: HTMLInputElement;
 	
-	/** Кнопка отправки формы */
-	private _submitButton: HTMLButtonElement;
-	
-	/** Контейнер для отображения ошибок */
-	private _errorContainer: HTMLElement;
-	
 	/** Список обработчиков событий для последующей очистки */
 	private readonly _handlers: Array<{ element: HTMLElement; event: string; handler: EventListener }> = [];
-
-	/** Регулярное выражение для проверки корректности email */
-	private static readonly emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 	
-	/** Регулярное выражение для проверки корректности телефона (+7 или 8, затем 10 цифр) */
-	private static readonly phoneRegex = /^(\+7|8)[\s-]?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{2}[\s-]?\d{2}$/;
+	/** Функция обработчика валидации */
+	private _validationHandler: ((result: { valid: boolean, errors: string[] }) => void) | null = null;
 
 	/**
 	 * Создает экземпляр формы контактных данных.
@@ -42,18 +33,72 @@ export class OrderContactForm extends Form<IOrderContactFormState> {
 	 * Инициализирует форму: находит элементы DOM и устанавливает обработчики событий.
 	 */
 	public init(): void {
-		// Инициализируем все элементы формы
+		// Инициализируем поля формы
 		this._emailInput = ensureElement<HTMLInputElement>('input[name="email"]', this.container);
 		this._phoneInput = ensureElement<HTMLInputElement>('input[name="phone"]', this.container);
-		this._submitButton = ensureElement<HTMLButtonElement>('.modal__actions .button', this.container);
-		this._errorContainer = ensureElement<HTMLElement>('.form__errors', this.container);
+		
+		// Добавляем обработчики ввода для полей
+		this._addHandler(this._emailInput, 'input', this._handleEmailInput.bind(this));
+		this._addHandler(this._phoneInput, 'input', this._handlePhoneInput.bind(this));
+		
+		// Добавляем обработчик отправки формы
+		this._addHandler(this.container, 'submit', this._handleSubmit.bind(this));
+		
+		// Создаем и сохраняем обработчик для возможности отписки
+		this._validationHandler = this.handleValidationResult.bind(this);
+		
+		// Подписываемся на события от модели через презентер
+		this.events.on('orderContact:validationResult', this._validationHandler);
+	}
 
-		// Обработчики ввода для полей email и телефона
-		this._addHandler(this._emailInput, 'input', this._handleInput.bind(this));
-		this._addHandler(this._phoneInput, 'input', this._handleInput.bind(this));
+	/**
+	 * Обрабатывает ввод email
+	 * @param {Event} e - Событие ввода
+	 * @private
+	 */
+	private _handleEmailInput(e: Event): void {
+		const input = e.target as HTMLInputElement;
+		
+		// Отправляем событие для обновления модели
+		this.events.emit('orderContact.email:change', {
+			field: 'email',
+			value: input.value
+		});
+	}
 
-		// Обработчик клика по кнопке отправки
-		this._addHandler(this._submitButton, 'click', this._handleSubmit.bind(this));
+	/**
+	 * Обрабатывает ввод телефона
+	 * @param {Event} e - Событие ввода
+	 * @private
+	 */
+	private _handlePhoneInput(e: Event): void {
+		const input = e.target as HTMLInputElement;
+		
+		// Отправляем событие для обновления модели
+		this.events.emit('orderContact.phone:change', {
+			field: 'phone',
+			value: input.value
+		});
+	}
+
+	/**
+	 * Обрабатывает отправку формы
+	 * @param {Event} e - Событие отправки формы
+	 * @private
+	 */
+	private _handleSubmit(e: Event): void {
+		e.preventDefault();
+		
+		// Получаем данные формы
+		const formData = new FormData(this.container);
+		const email = formData.get('email') as string;
+		const phone = formData.get('phone') as string;
+		
+		// Подготавливаем данные формы
+		const data = { email, phone };
+
+		// Отправляем событие с данными формы
+		this.events.emit('orderContact:submit', data);
 	}
 
 	/**
@@ -69,80 +114,24 @@ export class OrderContactForm extends Form<IOrderContactFormState> {
 	}
 
 	/**
-	 * Обрабатывает ввод данных в поля формы.
-	 * @private
+	 * Обрабатывает результаты валидации от модели
+	 * @param {IFormState} validationResult - Результаты валидации
 	 */
-	private _handleInput(): void {
-		this._validateForm();
+	private handleValidationResult(validationResult: { valid: boolean, errors: string[] }): void {
+		// Обновляем состояние формы через базовый класс
+		this.valid = validationResult.valid;
+		this.errors = validationResult.errors.join(', ');
 	}
 
-	/**
-	 * Обрабатывает отправку формы.
-	 * @param {Event} e - Событие клика
-	 * @private
-	 */
-	private _handleSubmit(e: Event): void {
-		e.preventDefault();
-		if (!this._submitButton.disabled) {
-			this._onSubmit();
-		}
-	}
-
-	/**
-	 * Валидирует данные формы и обновляет UI в соответствии с результатами.
-	 * @private
-	 */
-	private _validateForm(): void {
-		const errors: string[] = [];
-		const email = this._emailInput.value.trim();
-		const phone = this._phoneInput.value.trim();
-
-		// Проверяем email
-		if (!email) {
-			errors.push('Email не может быть пустым');
-		} else if (!OrderContactForm.emailRegex.test(email)) {
-			errors.push('Некорректный формат Email');
-		}
-
-		// Проверяем телефон
-		if (!phone) {
-			errors.push('Телефон не может быть пустым');
-		} else if (!OrderContactForm.phoneRegex.test(phone)) {
-			errors.push('Некорректный формат телефона');
-		}
-
-		// Переключаем состояние ошибки
-		this._toggleErrorState(errors);
-
-		// Обновляем события и текущее состояние формы
-		this.events.emit('order:formErrors', errors);
-		this.events.emit('orderContact:stateChange', { 
-			email, 
-			phone, 
-			valid: errors.length === 0 
-		});
-	}
-
-	/**
-	 * Обновляет отображение ошибок и состояние кнопки отправки.
-	 * @param {string[]} errors - Массив сообщений об ошибках
-	 * @private
-	 */
-	private _toggleErrorState(errors: string[]): void {
-		this._errorContainer.innerHTML = errors.map(error => `<p>${error}</p>`).join('');
-		this._submitButton.disabled = errors.length > 0;
-	}
-
-	/**
-	 * Отправляет данные формы через систему событий.
-	 * @private
-	 */
-	private _onSubmit(): void {
-		this.events.emit('orderContact:submit', {
-			email: this._emailInput.value.trim(),
-			phone: this._phoneInput.value.trim(),
-		});
-	}
+  /**
+   * Отображает ошибки валидации в форме
+   * @param {string[]} errors - Массив сообщений об ошибках
+   */
+  public showErrors(errors: string[]): void {
+    // Обновляем состояние кнопки отправки и ошибки через базовый класс
+    this.valid = false;
+    this.errors = errors.join(', ');
+  }
 
 	/**
 	 * Сбрасывает форму в исходное состояние.
@@ -152,66 +141,53 @@ export class OrderContactForm extends Form<IOrderContactFormState> {
 		this._emailInput.value = '';
 		this._phoneInput.value = '';
 
-		// Деактивируем кнопку отправки
-		this._submitButton.disabled = true;
+		// Сбрасываем ошибки и состояние валидности
+		this.valid = false;
+		this.errors = '';
 
-		// Сбрасываем ошибки
-		this._errorContainer.innerHTML = '';
-
-		// Отправляем событие сброса
-		this.events.emit('formReset', { 
-			email: '', 
-			phone: '', 
-			valid: false 
-		});
+		// Отправляем событие о сбросе
+		this.events.emit(`${this.container.name}:reset`);
 	}
 
 	/**
-	 * Отображает переданные ошибки и обновляет состояние формы.
-	 * @param {string[]} errors - Массив сообщений об ошибках
-	 */
-	public showErrors(errors: string[]): void {
-		this._toggleErrorState(errors);
-		this._validateForm(); // Перепроверка состояния кнопки
-	}
-
-	/**
-	 * Устанавливает значение email в форме.
-	 * @param {string} value - Новое значение email
-	 */
-	public set email(value: string) {
-		if (this._emailInput) {
-			this._emailInput.value = value;
-			this._validateForm();
-		}
-	}
-
-	/**
-	 * Устанавливает значение телефона в форме.
-	 * @param {string} value - Новое значение телефона
-	 */
-	public set phone(value: string) {
-		if (this._phoneInput) {
-			this._phoneInput.value = value;
-			this._validateForm();
-		}
-	}
-
-	/**
-	 * Переопределяем метод родительского класса для обработки изменений полей формы.
-	 * @param {string} field - Название поля
-	 * @param {string} value - Значение поля
+	 * Расширенный метод рендеринга для обновления полей формы
+	 * @param {Partial<IOrderContactFormState> & IFormState} state - Состояние формы
+	 * @returns {HTMLFormElement} HTML-элемент формы
 	 * @override
 	 */
-	protected onInputChange(field: keyof IOrderContactFormState, value: string): void {
-		// Вызываем родительский метод для обеспечения стандартного поведения
-		super.onInputChange(field, value);
-
-		// Дополнительная обработка для наших полей
-		if (field === 'email') {
-			this.email = value;
-		} else if (field === 'phone') {
-			this.phone = value;
+	render(state: Partial<IOrderContactFormState> & IFormState): HTMLFormElement {
+		// Обновляем поля формы, если они указаны в состоянии
+		if (state.email !== undefined && this._emailInput) {
+			this._emailInput.value = state.email;
+			
+			// Отправляем событие для обновления модели
+			this.events.emit('orderContact.email:change', {
+				field: 'email',
+				value: state.email
+			});
 		}
+		
+		if (state.phone !== undefined && this._phoneInput) {
+			this._phoneInput.value = state.phone;
+			
+			// Отправляем событие для обновления модели
+			this.events.emit('orderContact.phone:change', {
+				field: 'phone',
+				value: state.phone
+			});
+		}
+		
+		// Обновляем состояние валидности, если оно указано
+		if (state.valid !== undefined) {
+			this.valid = state.valid;
+		}
+		
+		// Обновляем ошибки, если они указаны
+		if (state.errors !== undefined) {
+			this.errors = state.errors.join(', ');
+		}
+		
+		// Вызываем родительский метод для обработки общих свойств формы
+		return this.container;
 	}
-	}
+}

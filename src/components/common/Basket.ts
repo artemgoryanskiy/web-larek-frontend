@@ -91,7 +91,7 @@ export class Basket extends Component<IBasketView> {
   render(state: IBasketView): HTMLElement {
     if (state.items.length > 0) {
       this._renderItems(state.items);
-      this.setText(this._total, formatNumber(state.total));
+      this.setText(this._total, `${formatNumber(state.total)} синапсов`);
       this.setDisabled(this._button, false);
     } else {
       this.clear();
@@ -115,7 +115,7 @@ export class Basket extends Component<IBasketView> {
   private clear(): void {
     this._renderEmptyState();
     this.setDisabled(this._button, true);
-    this.setText(this._total, formatNumber(0));
+    this.setText(this._total, `${formatNumber(0)} синапсов`);
   }
 
   /**
